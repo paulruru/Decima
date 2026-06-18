@@ -7,8 +7,6 @@ from aiogram.fsm.state import (
 
 
 class Form(StatesGroup):
-    name = State()
-    age = State()
+    photo_id = State()
     city = State()
-    height = State()
-    weight = State()
+
