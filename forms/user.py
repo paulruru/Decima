@@ -9,4 +9,3 @@ from aiogram.fsm.state import (
 class Form(StatesGroup):
     photo_id = State()
     city = State()
-

@@ -46,7 +46,8 @@ def start_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard = [
             [KeyboardButton(text = "Профиль")],
-            [KeyboardButton(text = "Активности")], 
+            [KeyboardButton(text = "Активности")],
+            [KeyboardButton(text = "Отмена")]
         ],
         resize_keyboard = True
     )
@@ -113,7 +114,7 @@ def re_photo_keyboard():
 def re_city_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard = [
-            [KeyboardButton(text = "Оставить текущий")]
+            [KeyboardButton(text = "Оставить текущий")],
             [KeyboardButton(text = "Отмена")]
         ],
         resize_keyboard = True
@@ -159,10 +160,30 @@ async def profile(message: Message):
         return
 
 
+@router.message(F.text.lower() == "активности")
+async def active(message: Message):
+    user_id = str(message.from_user.id)
+    exist_users_id = [el.split(".")[0] for el in os.listdir('db/users')]
+    for exist_user_id in exist_users_id:
+        if user_id == exist_user_id:
+            await message.answer(
+                "Вы зареганы, но мб у вас еще нет активностей"
+            )
+            break
+    else:
+        await message.answer(
+            "Вы еще не зарегестрированы",
+            reply_markup = reg_keyboard()
+        )
+        return
+              
+
 @router.message(F.text.lower() == "отмена")
-async def cancel(message: Message):
+async def cancel(message: Message, state: FSMContext):
     global registering
     registering = 0
+
+    await state.clear()
 
     await start(message)
 
@@ -192,6 +213,7 @@ async def auto_set_photo(message: Message, bot: Bot, state: FSMContext):
         )
         await state.set_state(Form.city)
     elif registering == 0:
+        await state.clear()
         await start(message)
 
 
@@ -210,6 +232,35 @@ async def proccess_photo(message: Message, state: FSMContext):
     elif registering == 2:
         await re_proccess_photo(message, state)
     else:
+        await state.clear()
+        await start(message)
+
+
+@router.message(F.text.lower() == "оставить текущий")
+async def re_keep_city(message: Message, bot: Bot, state: FSMContext):
+    global registering
+
+    if registering == 2:
+        await state.update_data(city = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")[1])
+
+        data = await state.get_data()
+        await message.answer("Профиль обнавлен")
+        await state.clear()
+
+        registering = 0
+
+        text = text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
+        open(f"db/users/{message.from_user.id}.txt", "a").write(f"\n{data["photo_id"]}|{"".join(data["city"])}|{text[2]}|{text[3]}|{text[4]}")
+
+        text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
+
+        await message.answer_photo(
+            text[0], 
+            caption = f"Город: {text[1].split()[0]}\nТекущий стрик: {text[2]}\nМаксимальный стрик: {text[3]}\nДрузья: {text[4]}",
+            reply_markup = profile_keyboard()
+        )
+    elif registering == 0:
+        await state.clear()
         await start(message)
 
 
@@ -230,6 +281,7 @@ async def proccess_city(message: Message, state: FSMContext):
 
         data = await state.get_data()
         await message.answer("Регистрация пройдена")
+        await state.clear()
 
         registering = 0
 
@@ -244,19 +296,35 @@ async def proccess_city(message: Message, state: FSMContext):
     elif registering == 2:
         await re_proccess_city(message, state)
     else:
+        await state.clear()
         await start(message)
 
 
 @router.message(F.text.lower() == "заполнить профиль заново")
-async def re_register(message: Message):
+async def re_register(message: Message, state: FSMContext):
     global registering
-    registering = 1
+    registering = 2
 
     await message.answer(
             "Пришлите свое фото",
             reply_markup = re_photo_keyboard()
     )
     await state.set_state(Form.photo_id)
+
+
+@router.message(Form.photo_id, F.photo)
+async def re_proccess_photo(message: Message, state: FSMContext):
+    if registering == 2:
+        photo = message.photo[-1]
+        await state.update_data(photo_id = photo.file_id)
+        await message.answer(
+                "Укажите ваш город",
+                reply_markup = re_city_keyboard()
+        )
+        await state.set_state(Form.city)
+    else:
+        await state.clear()
+        await start(message)
 
 
 @router.message(F.text.lower() == "оставить текущее")
@@ -271,6 +339,7 @@ async def re_keep_photo(message: Message, state: FSMContext):
         )
         await state.set_state(Form.city)
     elif registering == 0:
+        await state.clear()
         await start(message)
 
 
@@ -287,32 +356,7 @@ async def re_auto_set_photo(message: Message, bot: Bot, state: FSMContext):
         )
         await state.set_state(Form.city)
     elif registering == 0:
-        await start(message)
-
-
-@router.message(F.text.lower() == "оставить текущий")
-async def re_keep_city(message: Message, bot: Bot, state: FSMContext):
-    global registering
-
-    if registering == 2:
-        await state.update_data(city = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")[1])
-
-        data = await state.get_data()
-        await message.answer("Профиль обнавлен")
-
-        registering = 0
-
-        text = text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
-        open(f"db/users/{message.from_user.id}.txt", "a").write(f"\n{data["photo_id"]}|{" ".join(data["city"])}|{text[2]}|{text[3]}|{text[4]}")
-
-        text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
-
-        await message.answer_photo(
-            text[0], 
-            caption = f"Город: {text[1].split()[0]}\nТекущий стрик: {text[2]}\nМаксимальный стрик: {text[3]}\nДрузья: {text[4]}",
-            reply_markup = profile_keyboard()
-        )
-    elif registering == 0:
+        await state.clear()
         await start(message)
 
 
@@ -332,7 +376,8 @@ async def re_proccess_city(message: Message, state: FSMContext):
             return
 
         data = await state.get_data()
-        await message.answer("Регистрация пройдена")
+        await message.answer("Профиль обнавлен")
+        await state.clear()
 
         registering = 0
 
@@ -346,7 +391,6 @@ async def re_proccess_city(message: Message, state: FSMContext):
             caption = f"Город: {text[1].split()[0]}\nТекущий стрик: {text[2]}\nМаксимальный стрик: {text[3]}\nДрузья: {text[4]}",
             reply_markup = profile_keyboard()
         )
-    elif registering == 1:
-        await proccess_city(message, state)
     else:
+        await state.clear()
         await start(message)
