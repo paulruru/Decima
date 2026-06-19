@@ -149,6 +149,18 @@ def days_keyboard():
     return keyboard
 
 
+def delete_days_keyboard():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard = [
+            [KeyboardButton(text = "Понедельник."), KeyboardButton(text = "Вторник.")],
+            [KeyboardButton(text = "Среда."), KeyboardButton(text = "Четверг."), KeyboardButton(text = "Пятница.")],
+            [KeyboardButton(text = "Суббота."), KeyboardButton(text = "Воскресенье."), KeyboardButton(text = "Отмена")]
+        ],
+        resize_keyboard = True
+    )
+    return keyboard
+
+
 def types_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard = [
@@ -164,13 +176,27 @@ def types_keyboard():
 def saved_train_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard = [
-            [KeyboardButton(text = "Добавить тренировки")],
+            [KeyboardButton(text = "Добавить тренировку")],
+            [KeyboardButton(text = "Мое расписание")],
             [KeyboardButton(text = "Профиль")],
             [KeyboardButton(text = "Отмена")]
         ],
         resize_keyboard = True
     )
     return keyboard
+
+
+def delete_day_keyboard():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard = [
+            [KeyboardButton(text = "Добавить тренировку")],
+            [KeyboardButton(text = "Удалить тренировку")],
+            [KeyboardButton(text = "Отмена")]
+        ],
+        resize_keyboard = True
+    )
+    return keyboard
+
 
 
 @router.message(Command("start"))
@@ -180,7 +206,7 @@ async def start(message: Message):
 
     await message.answer(
         "1. Открыть профиль\n"
-        "2. Посмотреть активности\n",
+        "2. Мои активности\n",
         reply_markup = start_keyboard()
     )
 
@@ -447,37 +473,74 @@ async def re_proccess_city(message: Message, state: FSMContext):
 @router.message(F.text.lower() == "мое расписание")
 async def my_schedule(message: Message):
     if str(message.from_user.id) in [str(el.split(".")[0]) for el in os.listdir('db/schedule')]:
+        activities = open(f"db/schedule/{message.from_user.id}.txt", "r", encoding="utf-8").read().split("|")
+        days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
+        text = "".join([f"{days[i]}: {activities[i]}\n\n" for i in range(7)])
         await message.answer(
-            "тренировки есть но пока что не отображаются",
-            reply_markup = saved_train_keyboard()
-        )
+            text,
+            reply_markup = delete_day_keyboard()
+            )
     else:
         await message.answer(
-            "Вы еще не составляли рассписание",
+            "Вы еще не составляли расписание",
             reply_markup = create_schedule_keyboard()
         )
 
 
-@router.message(F.text.lower() == "составить расписание")
+@router.message(F.text.lower().in_({"составить расписание", "удалить тренировку"}))
 async def create_schedule(message: Message, state: FSMContext):
-    await message.answer(
-        "Выбирете день недели",
-        reply_markup = days_keyboard()
-    )
-    await state.set_state(Form2.day)
+    if message.text.lower() == "удалить тренировку":
+        await message.answer(
+            "Выбирете день недели",
+            reply_markup = delete_days_keyboard()
+        )
+        await state.set_state(Form2.day)
+
+    else:
+        await message.answer(
+            "Выбирете день недели",
+            reply_markup = days_keyboard()
+        )
+        await state.set_state(Form2.day)
 
 
-@router.message(F.text.lower().in_({"понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"}) )
+@router.message(F.text.lower().in_({"понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье", "понедельник.", "вторник.", "среда.", "четверг.", "пятница.", "суббота.", "воскресенье."}))
 async def choose_day(message: Message, state: FSMContext):
-    day = message.text.lower()
-    await state.update_data(day = day)
+    if message.text.lower() in {"понедельник.", "вторник.", "среда.", "четверг.", "пятница.", "суббота.", "воскресенье."}:
+        day = message.text.lower()[:-1]
+        await state.update_data(day = day)
 
-    await message.answer(
-        "Выбирете тип тренировки",
-        reply_markup = types_keyboard()
-    )
+        await state.set_state(Form2.activity)
+        await state.update_data(activity = '0')
 
-    await state.set_state(Form2.activity)
+        data = await state.get_data()
+        await state.clear()
+        try:
+            text = open(f"db/schedule/{message.from_user.id}.txt", "r", encoding="utf-8").read()
+        except:
+            text = f"0|0|0|0|0|0|0"
+
+        text = text.split("|")
+        days = {"понедельник": 0, "вторник": 1, "среда": 2, "четверг": 3, "пятница": 4, "суббота": 5, "воскресенье": 6}
+        text = text[:days[data["day"]]] + [data["activity"]] + text[days[data["day"]]+1:]
+        text = "|".join(text) + "\n"
+        open(f"db/schedule/{message.from_user.id}.txt", "w", encoding="utf-8").write(text)
+
+        await message.answer(
+            "Тренировка удалена",
+            reply_markup = saved_train_keyboard()
+        )
+        await my_schedule(message)
+
+    else:
+        day = message.text.lower()
+        await state.update_data(day = day)
+
+        await message.answer(
+            "Выбирете тип тренировки",
+        )
+
+        await state.set_state(Form2.activity)
 
 
 @router.message(F.text.lower().in_({"зал", "бег", "турники", "баскет", "валик", "футбол"}))
@@ -500,16 +563,17 @@ async def choose_activity(message: Message, state: FSMContext):
         open(f"db/schedule/{message.from_user.id}.txt", "w", encoding="utf-8").write(text)
 
         await message.answer(
-            "Тренеровка сохранена",
-            reply_markup = saved_train_keyboard()
+            "Тренировка сохранена",
         )
+
+        await my_schedule(message)
 
     except Exception as e:
         print(e)
         await cancel(message, state)
 
 
-@router.message(F.text.lower() == "добавить тренировки")
+@router.message(F.text.lower() == "добавить тренировку")
 async def add_schedule(message: Message, state: FSMContext):
     await create_schedule(message, state)
 
