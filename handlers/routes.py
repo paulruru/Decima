@@ -41,6 +41,7 @@ import asyncio
 
 router = Router()
 registering = 0 #0-no, 1-yes, 2-re_registering
+adding_friend = 0 
 
 def start_keyboard():
     keyboard = ReplyKeyboardMarkup(
@@ -90,7 +91,6 @@ def profile_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard = [
             [KeyboardButton(text = "Мое рассписание")], 
-            [KeyboardButton(text = "Мои друзья")],
             [KeyboardButton(text = "Заполнить профиль заново")],
             [KeyboardButton(text = "Отмена")]
         ],
@@ -122,7 +122,6 @@ def re_city_keyboard():
     return keyboard
 
 
-
 @router.message(Command("start"))
 async def start(message: Message):
     global registering
@@ -148,7 +147,7 @@ async def profile(message: Message):
 
             await message.answer_photo(
                 text[0], 
-                caption = f"Город: {text[1].split()[0]}\nТекущий стрик: {text[2]}\nМаксимальный стрик: {text[3]}\nДрузья: {text[4]}",
+                caption = f"Город: {text[1].split()[0]}\nТекущий стрик: {text[2]}\nМаксимальный стрик: {text[3]}",
                 reply_markup = profile_keyboard()
             )
             break
@@ -250,13 +249,13 @@ async def re_keep_city(message: Message, bot: Bot, state: FSMContext):
         registering = 0
 
         text = text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
-        open(f"db/users/{message.from_user.id}.txt", "a").write(f"\n{data["photo_id"]}|{"".join(data["city"])}|{text[2]}|{text[3]}|{text[4]}")
+        open(f"db/users/{message.from_user.id}.txt", "a").write(f"\n{data["photo_id"]}|{"".join(data["city"])}|{text[2]}|{text[3]}")
 
         text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
 
         await message.answer_photo(
             text[0], 
-            caption = f"Город: {text[1].split()[0]}\nТекущий стрик: {text[2]}\nМаксимальный стрик: {text[3]}\nДрузья: {text[4]}",
+            caption = f"Город: {text[1].split()[0]}\nТекущий стрик: {text[2]}\nМаксимальный стрик: {text[3]}",
             reply_markup = profile_keyboard()
         )
     elif registering == 0:
@@ -285,12 +284,12 @@ async def proccess_city(message: Message, state: FSMContext):
 
         registering = 0
 
-        open(f"db/users/{message.from_user.id}.txt", "w").write(f"{data["photo_id"]}|{" ".join(data["city"])}|0|0|0")
+        open(f"db/users/{message.from_user.id}.txt", "w").write(f"{data["photo_id"]}|{" ".join(data["city"])}|0|0")
         text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
 
         await message.answer_photo(
             text[0], 
-            caption = f"Город: {text[1].split()[0]}\nТекущий стрик: {text[2]}\nМаксимальный стрик: {text[3]}\nДрузья: {text[4]}",
+            caption = f"Город: {text[1].split()[0]}\nТекущий стрик: {text[2]}\nМаксимальный стрик: {text[3]}",
             reply_markup = profile_keyboard()
         )
     elif registering == 2:
@@ -382,13 +381,13 @@ async def re_proccess_city(message: Message, state: FSMContext):
         registering = 0
 
         text = text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
-        open(f"db/users/{message.from_user.id}.txt", "a").write(f"\n{data["photo_id"]}|{" ".join(data["city"])}|{text[2]}|{text[3]}|{text[4]}")
+        open(f"db/users/{message.from_user.id}.txt", "a").write(f"\n{data["photo_id"]}|{" ".join(data["city"])}|{text[2]}|{text[3]}")
 
         text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
 
         await message.answer_photo(
             text[0], 
-            caption = f"Город: {text[1].split()[0]}\nТекущий стрик: {text[2]}\nМаксимальный стрик: {text[3]}\nДрузья: {text[4]}",
+            caption = f"Город: {text[1].split()[0]}\nТекущий стрик: {text[2]}\nМаксимальный стрик: {text[3]}\n",
             reply_markup = profile_keyboard()
         )
     else:

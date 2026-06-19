@@ -1,1 +1,1 @@
-Photo_ID|City lat lng|Streak|MaxStreak|Friends
+Photo_ID|City lat lng|Streak|MaxStreak|
