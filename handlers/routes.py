@@ -22,6 +22,10 @@ from forms.user import (
     Form
 )
 
+from forms.schedule import (
+    Form2
+)
+
 from aiogram.fsm.context import (
     FSMContext
 )
@@ -90,7 +94,7 @@ def city_keyboard():
 def profile_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard = [
-            [KeyboardButton(text = "Мое рассписание")], 
+            [KeyboardButton(text = "Мое расписание")], 
             [KeyboardButton(text = "Заполнить профиль заново")],
             [KeyboardButton(text = "Отмена")]
         ],
@@ -122,6 +126,53 @@ def re_city_keyboard():
     return keyboard
 
 
+def create_schedule_keyboard():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard = [
+            [KeyboardButton(text = "Составить расписание")],
+            [KeyboardButton(text = "Отмена")]
+        ],
+        resize_keyboard = True
+    )
+    return keyboard
+
+
+def days_keyboard():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard = [
+            [KeyboardButton(text = "Понедельник"), KeyboardButton(text = "Вторник")],
+            [KeyboardButton(text = "Среда"), KeyboardButton(text = "Четверг"), KeyboardButton(text = "Пятница")],
+            [KeyboardButton(text = "Суббота"), KeyboardButton(text = "Воскресенье"), KeyboardButton(text = "Отмена")]
+        ],
+        resize_keyboard = True
+    )
+    return keyboard
+
+
+def types_keyboard():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard = [
+            [KeyboardButton(text = "Зал"), KeyboardButton(text = "Бег"), KeyboardButton(text = "Турники")],
+            [KeyboardButton(text = "Баскет"), KeyboardButton(text = "Валик"), KeyboardButton(text = "Футбол")],
+            [KeyboardButton(text = "Отмена")]
+        ],
+        resize_keyboard = True
+    )
+    return keyboard
+
+
+def saved_train_keyboard():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard = [
+            [KeyboardButton(text = "Добавить тренировки")],
+            [KeyboardButton(text = "Профиль")],
+            [KeyboardButton(text = "Отмена")]
+        ],
+        resize_keyboard = True
+    )
+    return keyboard
+
+
 @router.message(Command("start"))
 async def start(message: Message):
     global registering
@@ -143,7 +194,7 @@ async def profile(message: Message):
     exist_users_id = [el.split(".")[0] for el in os.listdir('db/users')]
     for exist_user_id in exist_users_id:
         if user_id == exist_user_id:
-            text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
+            text = open(f"db/users/{message.from_user.id}.txt", "r", encoding="utf-8").read().split("\n")[-1].split("|")
 
             await message.answer_photo(
                 text[0], 
@@ -165,9 +216,7 @@ async def active(message: Message):
     exist_users_id = [el.split(".")[0] for el in os.listdir('db/users')]
     for exist_user_id in exist_users_id:
         if user_id == exist_user_id:
-            await message.answer(
-                "Вы зареганы, но мб у вас еще нет активностей"
-            )
+            await my_schedule(message)
             break
     else:
         await message.answer(
@@ -240,7 +289,7 @@ async def re_keep_city(message: Message, bot: Bot, state: FSMContext):
     global registering
 
     if registering == 2:
-        await state.update_data(city = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")[1])
+        await state.update_data(city = open(f"db/users/{message.from_user.id}.txt", "r", encoding="utf-8").read().split("\n")[-1].split("|")[1])
 
         data = await state.get_data()
         await message.answer("Профиль обнавлен")
@@ -248,10 +297,10 @@ async def re_keep_city(message: Message, bot: Bot, state: FSMContext):
 
         registering = 0
 
-        text = text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
-        open(f"db/users/{message.from_user.id}.txt", "a").write(f"\n{data["photo_id"]}|{"".join(data["city"])}|{text[2]}|{text[3]}")
+        text = text = open(f"db/users/{message.from_user.id}.txt", "r", encoding="utf-8").read().split("\n")[-1].split("|")
+        open(f"db/users/{message.from_user.id}.txt", "a", encoding="utf-8").write(f"\n{data["photo_id"]}|{"".join(data["city"])}|{text[2]}|{text[3]}")
 
-        text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
+        text = open(f"db/users/{message.from_user.id}.txt", "r", encoding="utf-8").read().split("\n")[-1].split("|")
 
         await message.answer_photo(
             text[0], 
@@ -284,8 +333,8 @@ async def proccess_city(message: Message, state: FSMContext):
 
         registering = 0
 
-        open(f"db/users/{message.from_user.id}.txt", "w").write(f"{data["photo_id"]}|{" ".join(data["city"])}|0|0")
-        text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
+        open(f"db/users/{message.from_user.id}.txt", "w", encoding="utf-8").write(f"{data["photo_id"]}|{" ".join(data["city"])}|0|0")
+        text = open(f"db/users/{message.from_user.id}.txt", "r", encoding="utf-8").read().split("\n")[-1].split("|")
 
         await message.answer_photo(
             text[0], 
@@ -331,7 +380,7 @@ async def re_keep_photo(message: Message, state: FSMContext):
     global registering
 
     if registering == 2:
-        await state.update_data(photo_id = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")[0])
+        await state.update_data(photo_id = open(f"db/users/{message.from_user.id}.txt", "r", encoding="utf-8").read().split("\n")[-1].split("|")[0])
         await message.answer(
                 "Укажите ваш город",
                 reply_markup = re_city_keyboard()
@@ -380,10 +429,10 @@ async def re_proccess_city(message: Message, state: FSMContext):
 
         registering = 0
 
-        text = text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
-        open(f"db/users/{message.from_user.id}.txt", "a").write(f"\n{data["photo_id"]}|{" ".join(data["city"])}|{text[2]}|{text[3]}")
+        text = text = open(f"db/users/{message.from_user.id}.txt", "r", encoding="utf-8").read().split("\n")[-1].split("|")
+        open(f"db/users/{message.from_user.id}.txt", "a", encoding="utf-8").write(f"\n{data["photo_id"]}|{" ".join(data["city"])}|{text[2]}|{text[3]}")
 
-        text = open(f"db/users/{message.from_user.id}.txt", "r").read().split("\n")[-1].split("|")
+        text = open(f"db/users/{message.from_user.id}.txt", "r", encoding="utf-8").read().split("\n")[-1].split("|")
 
         await message.answer_photo(
             text[0], 
@@ -393,3 +442,75 @@ async def re_proccess_city(message: Message, state: FSMContext):
     else:
         await state.clear()
         await start(message)
+
+
+@router.message(F.text.lower() == "мое расписание")
+async def my_schedule(message: Message):
+    if str(message.from_user.id) in [str(el.split(".")[0]) for el in os.listdir('db/schedule')]:
+        await message.answer(
+            "тренировки есть но пока что не отображаются",
+            reply_markup = saved_train_keyboard()
+        )
+    else:
+        await message.answer(
+            "Вы еще не составляли рассписание",
+            reply_markup = create_schedule_keyboard()
+        )
+
+
+@router.message(F.text.lower() == "составить расписание")
+async def create_schedule(message: Message, state: FSMContext):
+    await message.answer(
+        "Выбирете день недели",
+        reply_markup = days_keyboard()
+    )
+    await state.set_state(Form2.day)
+
+
+@router.message(F.text.lower().in_({"понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"}) )
+async def choose_day(message: Message, state: FSMContext):
+    day = message.text.lower()
+    await state.update_data(day = day)
+
+    await message.answer(
+        "Выбирете тип тренировки",
+        reply_markup = types_keyboard()
+    )
+
+    await state.set_state(Form2.activity)
+
+
+@router.message(F.text.lower().in_({"зал", "бег", "турники", "баскет", "валик", "футбол"}))
+async def choose_activity(message: Message, state: FSMContext):
+    try:
+        activity = message.text.lower()
+        await state.update_data(activity = activity)
+
+        data = await state.get_data()
+        await state.clear()
+        try:
+            text = open(f"db/schedule/{message.from_user.id}.txt", "r", encoding="utf-8").read()
+        except:
+            text = f"0|0|0|0|0|0|0"
+
+        text = text.split("|")
+        days = {"понедельник": 0, "вторник": 1, "среда": 2, "четверг": 3, "пятница": 4, "суббота": 5, "воскресенье": 6}
+        text = text[:days[data["day"]]] + [data["activity"]] + text[days[data["day"]]+1:]
+        text = "|".join(text) + "\n"
+        open(f"db/schedule/{message.from_user.id}.txt", "w", encoding="utf-8").write(text)
+
+        await message.answer(
+            "Тренеровка сохранена",
+            reply_markup = saved_train_keyboard()
+        )
+
+    except Exception as e:
+        print(e)
+        await cancel(message, state)
+
+
+@router.message(F.text.lower() == "добавить тренировки")
+async def add_schedule(message: Message, state: FSMContext):
+    await create_schedule(message, state)
+
+
