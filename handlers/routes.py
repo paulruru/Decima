@@ -528,7 +528,6 @@ async def choose_day(message: Message, state: FSMContext):
 
         await message.answer(
             "Тренировка удалена",
-            reply_markup = saved_train_keyboard()
         )
         await my_schedule(message)
 
@@ -538,6 +537,7 @@ async def choose_day(message: Message, state: FSMContext):
 
         await message.answer(
             "Выбирете тип тренировки",
+            reply_markup = types_keyboard()
         )
 
         await state.set_state(Form2.activity)
