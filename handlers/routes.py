@@ -34,6 +34,9 @@ from city import (
     get_city,
     get_time
 )
+from datetime import (
+    date
+)
 
 import os
 import aiohttp
@@ -46,6 +49,111 @@ import asyncio
 router = Router()
 registering = 0 #0-no, 1-yes, 2-re_registering
 adding_friend = 0 
+
+
+
+
+async def end(bot: Bot):
+    # если сегодня была треня:
+    #     если до конца дня юзер подтвердил треню:
+    #         стрик += 1:
+    #     иначе:
+    #         максстрик = стрик если (стрик > максстрик) 
+    #         стрик = 0
+    return
+
+
+
+
+def notifier_keyboard():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard = [
+            [KeyboardButton(text = "Напомнить позже")],
+            [KeyboardButton(text = "Я уже позанимался")],
+            [KeyboardButton(text = "Отмена")]
+        ],
+        resize_keyboard = True
+    )
+    return keyboard
+
+
+async def notifier(bot: Bot):
+    while True:
+        notified = open(f"db/notified.txt", "r", encoding = "utf-8").read().split("|")
+        for el in os.listdir('db/schedule'):
+            el = el.split(".")
+            text = open(f"db/users/{el[0]}.txt", "r", encoding="utf-8").read().split("\n")[-1].split("|")
+            city_name = text[1].split()[0]
+            lat, lng = (get_city(city_name)[1:])
+            dates = get_time(lat, lng).split()
+            day = dates[0].split("-")
+            time = dates[1].split(":")
+            training = open(f"db/schedule/{el[0]}.txt", "r", encoding = "utf-8").read().split("|")[date(int(day[0]), int(day[1]), int(day[2])).weekday()]
+            if training != "0":
+                done = open("db/done.txt", "r", encoding = "utf-8").read().split("|")
+                if not(el[0] in notified) and (8 <= int(time[0]) <= 22) and not(str(el[0]) in done):
+                    try:
+                        await bot.send_message(
+                            el[0], 
+                            f"Привет, помнишь сегодня у тебя тренировка: {training}",
+                            reply_markup = notifier_keyboard()
+                        )
+                        open(f"db/notified.txt", "a", encoding = "utf-8").write(f"{el[0]}|")
+                    except Exception as e:
+                        print(e)
+            if (0 <= int(time[0]) <= 1):
+                try:
+                    yesterday_training = open(f"db/schedule/{el[0]}.txt", "r", encoding = "utf-8").read().split("|")[date(int(day[0]), int(day[1]), int(day[2])).weekday()-1]
+                except:
+                    yesterday_training = open(f"db/schedule/{el[0]}.txt", "r", encoding = "utf-8").read().split("|")[6]
+                if yesterday_training != "0":
+                    done = open("db/done.txt", "r", encoding = "utf-8").read().split("|")
+                    if str(el[0]) in done:
+                        
+                        text[2] = str(int(text[2]) + 1)
+                        if int(text[3]) < int(text[2]):
+                            text[3] = text[2]
+                    else:
+                        if int(text[3]) < int(text[2]):
+                            text[3] = text[2]
+                        text[2] = "0"
+                        open(f"db/users/{el[0]}.txt", "a", encoding="utf-8").write("\n"+"|".join(text))
+                    open(f"db/done.txt", "w", encoding="utf-8").write("")
+                    open(f"db/notified.txt", "w", encoding="utf-8").write("")
+
+        await asyncio.sleep(666)
+
+
+@router.message(F.text.lower() == "напомнить позже")
+async def remind_later(message: Message):
+    notified = open(f"db/notified.txt", "r", encoding = "utf-8").read()
+    start = notified.find(f"{message.from_user.id}")
+    end = start + len(str(message.from_user.id))
+    text = notified[:start] + notified[end+1:]
+    open(f"db/notified.txt", "w", encoding = "utf-8").write(text)
+    await message.answer(
+        "Хорошо, напомню позже"
+    )
+    await my_schedule(message)
+
+
+@router.message(F.text.lower() == "я уже позанимался")
+async def done(message: Message):
+    text = open(f"db/users/{message.from_user.id}.txt", "r", encoding="utf-8").read().split("\n")[-1].split("|")
+    city_name = text[1].split()[0]
+    lat, lng = (get_city(city_name)[1:])
+    dates = get_time(lat, lng).split()
+    day = dates[0].split("-")
+    time = dates[1].split(":")
+    training = open(f"db/schedule/{message.from_user.id}.txt", "r", encoding = "utf-8").read().split("|")[date(int(day[0]), int(day[1]), int(day[2])).weekday()]
+    if training != "0":
+        open("db/done.txt", "a", encoding = "utf-8").write(f"{message.from_user.id}|")
+        await message.answer(
+            "Молодец, стрик обновиться в конце дня"
+        )
+        await profile(message)
+
+
 
 def start_keyboard():
     keyboard = ReplyKeyboardMarkup(
@@ -189,6 +297,7 @@ def saved_train_keyboard():
 def delete_day_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard = [
+            [KeyboardButton(text = "Я уже позанимался")],
             [KeyboardButton(text = "Добавить тренировку")],
             [KeyboardButton(text = "Удалить тренировку")],
             [KeyboardButton(text = "Отмена")]

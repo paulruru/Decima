@@ -15,6 +15,7 @@ from dotenv import (
 
 from handlers.routes import (
     router,
+    notifier
 )
 
 
@@ -28,6 +29,8 @@ dp.include_router(router)
 
 async def main():
     bot = Bot(token = TOKEN)
+
+    asyncio.create_task(notifier(bot))
 
     await dp.start_polling(bot)
 
