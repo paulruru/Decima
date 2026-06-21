@@ -53,18 +53,6 @@ adding_friend = 0
 
 
 
-async def end(bot: Bot):
-    # если сегодня была треня:
-    #     если до конца дня юзер подтвердил треню:
-    #         стрик += 1:
-    #     иначе:
-    #         максстрик = стрик если (стрик > максстрик) 
-    #         стрик = 0
-    return
-
-
-
-
 def notifier_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard = [
