@@ -135,10 +135,15 @@ async def done(message: Message):
     time = dates[1].split(":")
     training = open(f"db/schedule/{message.from_user.id}.txt", "r", encoding = "utf-8").read().split("|")[date(int(day[0]), int(day[1]), int(day[2])).weekday()]
     if training != "0":
-        open("db/done.txt", "a", encoding = "utf-8").write(f"{message.from_user.id}|")
-        await message.answer(
-            "Молодец, стрик обновиться в конце дня"
-        )
+        if not (str(message.from_user.id) in open(f'db/done.txt', "r", encoding = "utf-8").read().split("|")):
+            open("db/done.txt", "a", encoding = "utf-8").write(f"{message.from_user.id}|")
+            await message.answer(
+                "Молодец, стрик обновиться в конце дня"
+            )
+        else:
+            await message.answer(
+                "Я тебя уже отметил"
+            )
         await profile(message)
 
 
